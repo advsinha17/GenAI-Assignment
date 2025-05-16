@@ -174,3 +174,5 @@ cython_debug/
 .pypirc
 .DS_Store
 Assignment1/.DS_Store
+Assignment2/.DS_Store
+Assignment2/SinGAN/results/
