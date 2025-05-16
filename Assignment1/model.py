@@ -7,20 +7,19 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 class NMTModel(nn.Module):
+    """
+    NMT model using MarianMTModel from Hugging Face Transformers.
+    Freezes the encoder of the model, leaving only the decoder trainable.
+    """
     def __init__(self, model_name):
         super(NMTModel, self).__init__()
         from transformers import MarianMTModel
         self.model = MarianMTModel.from_pretrained(model_name)
-        
-        # total_params = list(self.model.parameters())
-        # num_freeze = int(0.7 * len(total_params))
-        # for param in total_params[:num_freeze]:
-        #     param.requires_grad = False
 
         for param in self.model.model.encoder.parameters():
             param.requires_grad = False
 
-        num_layers_to_freeze = 4
+        num_layers_to_freeze = 0
         for i in range(num_layers_to_freeze):
             for param in self.model.model.decoder.layers[i].parameters():
                 param.requires_grad = False
@@ -34,6 +33,9 @@ class NMTModel(nn.Module):
     
 
 class Trainer:
+    """
+    Trainer class to train the NMT model.
+    """
     def __init__(self, model, train_dataset, val_dataset=None, batch_size=16, lr=1e-3, epochs=20, device=None):
         self.device = device if device else ("cuda" if torch.cuda.is_available() else "cpu")
         self.model = model.to(self.device)
@@ -42,7 +44,8 @@ class Trainer:
         self.optimizer = optim.AdamW(self.model.parameters(), lr=lr)
         self.criterion = nn.CrossEntropyLoss()
         self.epochs = epochs
-        self.save_path = '/content/drive/MyDrive/ft_marian.pt'
+        self.save_path = '/content/drive/MyDrive/ft_marian_final_100k'
+        # self.save_path = '/kaggle/working/ft_marian_final_100k'
 
 
     def train(self):
@@ -70,20 +73,22 @@ class Trainer:
             avg_train_loss = total_loss / len(self.train_dataloader)
             train_losses.append(avg_train_loss)
             print(f"Epoch {epoch+1}/{self.epochs}, Training Loss: {avg_train_loss}")
+            torch.save(self.model.state_dict(), f"{self.save_path}_epoch_{epoch}.pt")
 
             if self.val_dataloader:
                 self.validate()
         
         print("Training Complete.")
-        torch.save(self.model.state_dict(), self.save_path)
+        torch.save(self.model.state_dict(), f"{self.save_path}.pt")
         plt.figure(figsize=(10, 5))
         plt.plot(range(1, self.epochs + 1), train_losses, label='Training Loss')
         plt.xlabel('Epochs')
         plt.ylabel('Loss')
-        plt.title('Training and Validation Losses')
+        plt.title('Training Loss')
         plt.legend()
         plt.grid(True)
-        plot_path = self.save_path.replace('.pt', '_loss_plot.png')  
+        # plot_path = self.save_path.replace('.pt', '_loss_plot.png')  
+        plot_path = f"{self.save_path}_loss_plot.png"
         plt.savefig(plot_path)
         plt.close()
     
